@@ -3,7 +3,7 @@
 Dirwatcher - A long-running program
 """
 
-__author__ = "Wesley Salesberry with help from JT"
+__author__ = "Wesley Salesberry with help from JT and Peter"
 
 import sys
 import argparse
@@ -15,14 +15,14 @@ import os
 exit_flag = False
 
 
-def search_for_magic(filename, start_line, magic_string, path):
+def search_for_magic(filename, start_line, magic_string):
     line_number = start_line
-    with open(f'{path}/{filename}') as f:
+    with open(f'{filename}') as f:
         lines = f.readlines()
     num_of_lines = len(lines)
     for index in range(start_line, num_of_lines):
         if magic_string in lines[index]:
-            print(f'word found in {filename} {index + 1}!')
+           logging.info(f'word found in {filename} {index + 1}!')
             # logging moment here
         line_number = index + 1
     return line_number
@@ -39,18 +39,18 @@ def watch_directory(path, magic_string, extension, interval):
             for files in file_list:
                 if files.endswith(extension) and files not in file_holder:
                     file_holder[files] = 0
-                    print(f'file added {files}')
+                    logging.info(f'file added {files}')
             key = list(file_holder.keys())
             for k in key:
                 if k not in file_list:
                     print(f'this file was removed {k}')
                     file_holder.pop(k)
             for key, value in file_holder.items():
-                file_holder[key] = search_for_magic(path, key, value, magic_string)
+                file_holder[key] = search_for_magic(f'{path}/{key}', value, magic_string)
             print(file_holder)
 
         else:
-            print("path not found")
+            logging.error("path not found")
             file_holder = {}
         
   
@@ -71,9 +71,16 @@ def create_parser():
 
 def signal_handler(sig_num, frame):
 
-    global exit_flag
-    exit_flag = True
-    logging.warning('Received ' + signal.Signals(sig_num).name)
+    #signal.signal(signal.SIGINT, original_sigint)
+    try:
+        if input("\nQuit? (y/n)> ").lower().startswith('y'):
+            sys.exit(1)
+    except KeyboardInterrupt:
+        logging.info("Exiting Program....")
+        sys.exit(1)
+
+    signal.signal(signal.SIGINT, signal_handler)
+
 
 
 def main(args):
@@ -89,16 +96,15 @@ def main(args):
         sys.exit(1)
 
     path = ns.directory
-    magic = ns.magic
+    word = ns.word
     ext = ns.extension
     integer = ns.integer
 
     while not exit_flag:
         try:
-            print('something')
-            watch_directory(path, magic, ext, integer)
+            watch_directory(path, word, ext, integer)
         except FileNotFoundError as err:
-            print('Sorry, this file does not exist')
+            logging.info('Sorry, this file does not exist')
             logging.error(err)
     return
 
