@@ -14,6 +14,14 @@ import os
 
 exit_flag = False
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter(
+    '%(asctime)s %(name)s %(levelname)s \n%(message)s')
+handler = logging.StreamHandler(sys.stdout)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
 
 def search_for_magic(filename, start_line, magic_string):
     line_number = start_line
@@ -22,7 +30,7 @@ def search_for_magic(filename, start_line, magic_string):
     num_of_lines = len(lines)
     for index in range(start_line, num_of_lines):
         if magic_string in lines[index]:
-           logging.info(f'word found in {filename} {index + 1}!')
+           logger.info(f'word found in {filename} {index + 1}!')
             # logging moment here
         line_number = index + 1
     return line_number
@@ -39,7 +47,7 @@ def watch_directory(path, magic_string, extension, interval):
             for files in file_list:
                 if files.endswith(extension) and files not in file_holder:
                     file_holder[files] = 0
-                    logging.info(f'file added {files}')
+                    logger.info(f'file added {files}')
             key = list(file_holder.keys())
             for k in key:
                 if k not in file_list:
@@ -47,14 +55,10 @@ def watch_directory(path, magic_string, extension, interval):
                     file_holder.pop(k)
             for key, value in file_holder.items():
                 file_holder[key] = search_for_magic(f'{path}/{key}', value, magic_string)
-            print(file_holder)
-
         else:
-            logging.error("path not found")
+            #logging.error(f"{path} this directory may not yet exist!")
+            exit = True
             file_holder = {}
-        
-  
-
 
 def create_parser():
     parser = argparse.ArgumentParser(description="Watches specified directory for magic word.")
@@ -70,17 +74,10 @@ def create_parser():
 
 
 def signal_handler(sig_num, frame):
-
-    #signal.signal(signal.SIGINT, original_sigint)
-    try:
-        if input("\nQuit? (y/n)> ").lower().startswith('y'):
-            sys.exit(1)
-    except KeyboardInterrupt:
-        logging.info("Exiting Program....")
-        sys.exit(1)
-
-    signal.signal(signal.SIGINT, signal_handler)
-
+    global exit_flag
+    logger.warning('Received ' + signal.Signals(sig_num).name)
+    exit_flag = True
+    raise SystemExit()
 
 
 def main(args):
@@ -104,7 +101,7 @@ def main(args):
         try:
             watch_directory(path, word, ext, integer)
         except FileNotFoundError as err:
-            logging.info('Sorry, this file does not exist')
+            logging.info(f'{path} doesnt exist')
             logging.error(err)
     return
 
